@@ -9,8 +9,8 @@ class parameters():
         #Dataset parameters:
         self.dataset = 'cifar10'
         self.data_path = '../data'
-        self.train_bs = 64
-        self.test_bs = 5000
+        self.train_bs = 256
+        self.test_bs = 1024
 
         #NN parameters:
         # self.batchnorm = True
@@ -18,22 +18,26 @@ class parameters():
         #Forest parameters:
         self.use_tree = True
         self.use_prenet = True
+        self.classification = True
 
-        self.n_trees = 1
+        self.n_trees = 20
 
         #Tree parameters:
         self.tree_depth = 10
+        self.n_leaf = 2**self.tree_depth
+        self.feature_length = 256
         self.cascading = False
         self.single_level_training = True
+        self.features4tree = 1
         # self.level = 0
         # self.single_sigmoid = False
         # self.softmax_normalization = True ##! replace softmax_normalization in tree_conf
 
         #Training parameters:
-        self.epochs = 10
+        self.epochs = 15
         # self.batch_size = 64
         self.one_batch = True
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         self.weight_decay=1e-5
         self.momentum=0.9
 

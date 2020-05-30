@@ -27,4 +27,4 @@ def cifar_dl(prms):
     testloader = torch.utils.data.DataLoader(testset, batch_size=test_bs,
                                             shuffle=False, num_workers=4)
     
-    return trainloader,testloader
+    return trainset, testset, trainloader, testloader
