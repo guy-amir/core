@@ -1,12 +1,16 @@
 import torch.optim as optim
 import torch.nn as nn
 import torch
+from smooth import smoothness_layers
 
 class Trainer():
     def __init__(self,prms,net):
         self.prms = prms
         self.net = net
-        self.criterion = nn.NLLLoss()
+        if prms.use_tree == True:
+            self.criterion = nn.NLLLoss()
+        else:
+            self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.SGD(net.parameters(), lr=prms.learning_rate, momentum=prms.momentum, weight_decay=self.prms.weight_decay)
 
     def validation(self,testloader):
@@ -21,9 +25,11 @@ class Trainer():
                 _, predicted = torch.max(preds, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
+                acc = 100 * correct / total
 
         print('Accuracy of the network on the 10000 test images: %d %%' % (
-            100 * correct / total))
+            acc))
+        return acc
 
     def wavelet_validation(self,testloader,cutoff):
         self.net.train(False)
@@ -68,12 +74,16 @@ class Trainer():
             for data in testloader:
                 images, labels = data[0].to(prms.device), data[1].to(prms.device)
                 preds = self.net.forward_wavelets(xb = images, yb = labels, cutoff_nodes=cutoff_nodes)
-
+                if self.prms.check_smoothness == True:
+                    preds = preds[-1]
                 _, predicted = torch.max(preds, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        print(f'Accuracy of the network with {cutoff} wavelets on the 10000 test images: {100 * correct / total}')
+                acc = 100 * correct / total
+
+        print(f'Accuracy of the network with {cutoff} wavelets on the 10000 test images: {acc}')
+        return acc
 
     def phi_maker(self,y,mu):
         phi = torch.zeros(y.size())
@@ -100,6 +110,13 @@ class Trainer():
         prms = self.prms
         self.net.y_hat_avg = []
 
+        self.loss_list = []
+        self.val_acc_list = []
+        self.train_acc_list = []
+        self.wav_acc_list = []
+        self.smooth_list = []
+        self.cutoff_list = []
+
         for epoch in range(prms.epochs):  # loop over the dataset multiple times
 
             self.net.train(True)
@@ -107,7 +124,10 @@ class Trainer():
             
             self.net.y_hat_batch_avg = []
 
+            total = 0
+            correct = 0
             running_loss = 0.0
+            long_running_loss = 0.0
             for i, data in enumerate(trainloader, 0):
                 # get the x; data is a list of [x, y]
                 xb, yb = data[0].to(prms.device), data[1].to(prms.device)
@@ -118,21 +138,51 @@ class Trainer():
                 # forward + backward + optimize
                 
                 preds = self.net(xb,yb)
-                loss = self.criterion(preds, yb)
+                if prms.use_tree==True:
+                    loss = self.criterion(torch.log(preds), yb)
+                else:
+                    loss = self.criterion(preds, yb)
                 loss.backward()
                 self.optimizer.step()
 
                 # print statistics
                 running_loss += loss.item()
-                if i % 10 == 9:    # print every 200 mini-batches
+                long_running_loss  += loss.item()
+                if i % 50 == 49:    # print every 50 mini-batches
+
                     print(f'[{epoch + 1}, {i + 1}] loss: {running_loss}')
                     running_loss = 0.0
 
-            self.net.y_hat_batch_avg = torch.cat(self.net.y_hat_batch_avg, dim=2)
-            self.net.y_hat_batch_avg = torch.sum(self.net.y_hat_batch_avg, dim=2)/self.net.y_hat_batch_avg.size(2)
-            self.net.y_hat_avg.append(self.net.y_hat_batch_avg.unsqueeze(2))
+            _, predicted = torch.max(preds, 1)
+            total += yb.size(0)
+            correct += (predicted == yb).sum().item()
+            train_acc = 100 * correct / total
 
-            for i in range(5):
-                cutoff = int(i*prms.n_leaf/5) #arbitrary cutoff
-                self.wavelet_validation(testloader,cutoff)
-            self.validation(testloader)
+            if prms.check_smoothness == True:
+                preds_list = self.net.pred_list
+                smooth_layers = smoothness_layers(preds_list,yb)
+
+
+            if prms.use_tree==True:
+                wav_acc = []
+                self.net.y_hat_batch_avg = torch.cat(self.net.y_hat_batch_avg, dim=2)
+                self.net.y_hat_batch_avg = torch.sum(self.net.y_hat_batch_avg, dim=2)/self.net.y_hat_batch_avg.size(2)
+                self.net.y_hat_avg.append(self.net.y_hat_batch_avg.unsqueeze(2))
+                if prms.wavelets == True:
+                    for i in range(1,6):
+                        cutoff = int(i*prms.n_leaf/5) #arbitrary cutoff
+                        wav_acc.append(self.wavelet_validation(testloader,cutoff))
+            
+
+            self.loss_list.append(long_running_loss)
+            val_acc = self.validation(testloader)
+            self.val_acc_list.append(val_acc)
+            self.train_acc_list.append(train_acc)
+            if prms.use_tree and prms.wavelets:
+                self.wav_acc_list.append(wav_acc)
+            self.cutoff_list = [int(i*prms.n_leaf/5) for i in range(1,6)]
+            self.smooth_list.append(smooth_layers)
+
+            return self.loss_list,self.val_acc_list,self.train_acc_list,self.wav_acc_list,self.cutoff_list,self.smooth_list
+            
+            #this is where we append everything

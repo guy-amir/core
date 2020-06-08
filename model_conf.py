@@ -89,8 +89,8 @@ class cifar_net(nn.Module):
         #softmax
         # sm = self.softmax(fc2)
 
-        # return x,cl1,cl2,cl3,fc1,fc2,sm #option a - smoothness testing
-        return fc2 #option b - no smoothness testing
+        return x,cl1,cl2,cl3,fc1,fc2 #option a - smoothness testing
+        # return fc2 #option b - no smoothness testing
 
 class Forest(nn.Module):
     def __init__(self, prms):
@@ -99,8 +99,6 @@ class Forest(nn.Module):
         self.prms = prms
         self.y_hat_avg= []
         self.mu_list = []
-
-
 
         #The neural network that feeds into the trees:
         self.prenet = cifar_net()
@@ -124,7 +122,8 @@ class Forest(nn.Module):
             
 
         if self.prms.use_prenet:
-            xb = self.prenet(xb)
+            self.pred_list = self.prenet(xb)
+            xb = self.pred_list[-1]
 
         if (self.prms.use_tree == False):
             return xb
@@ -187,7 +186,8 @@ class Forest(nn.Module):
         
 
         if self.prms.use_prenet:
-            xb = self.prenet(xb)
+            self.pred_list = self.prenet(xb)
+            xb = self.pred_list[-1]
 
         if (self.prms.use_tree == False):
             return xb
@@ -233,7 +233,14 @@ class Forest(nn.Module):
 
         self.prediction = torch.cat(self.predictions, dim=2)
         self.prediction = torch.sum(self.prediction, dim=2)/self.prms.n_trees
-        return self.prediction
+
+        if self.prms.check_smoothness == True:
+            self.pred_list = list(self.pred_list)
+            self.pred_list.append(self.prediction)
+            return self.pred_list
+        else:
+            return self.prediction
+
 class Tree(nn.Module):
     def __init__(self,prms):
         super(Tree, self).__init__()

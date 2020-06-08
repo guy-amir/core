@@ -34,13 +34,16 @@ class parameters():
         # self.softmax_normalization = True ##! replace softmax_normalization in tree_conf
 
         #Training parameters:
-        self.epochs = 5
+        self.epochs = 2
         # self.batch_size = 64
         self.one_batch = True
-        self.learning_rate = 0.01
+        self.learning_rate = 0.05
         self.weight_decay=1e-5
         self.momentum=0.9
 
         #Wavelet parameters:
         self.wavelets = True
         self.intervals = 200
+
+        #smoothness parameters:
+        self.check_smoothness = True
