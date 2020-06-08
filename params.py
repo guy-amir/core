@@ -20,10 +20,10 @@ class parameters():
         self.use_prenet = True
         self.classification = True
 
-        self.n_trees = 20
+        self.n_trees = 1
 
         #Tree parameters:
-        self.tree_depth = 10
+        self.tree_depth = 5
         self.n_leaf = 2**self.tree_depth
         self.feature_length = 256
         self.cascading = False
@@ -34,7 +34,7 @@ class parameters():
         # self.softmax_normalization = True ##! replace softmax_normalization in tree_conf
 
         #Training parameters:
-        self.epochs = 15
+        self.epochs = 5
         # self.batch_size = 64
         self.one_batch = True
         self.learning_rate = 0.01

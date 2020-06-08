@@ -13,10 +13,11 @@ trainset, testset, trainloader, testloader = get_dataloaders(prms)
 #initiate model
 net = Forest(prms)
 
+#move model to CUDA
 net.to(prms.device)
 
 #run\fit\whatever
 trainer = Trainer(prms,net)
 trainer.fit(trainloader,testloader)
-trainer.validation(testloader)
+
 #postprocessing

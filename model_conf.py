@@ -109,7 +109,7 @@ class Forest(nn.Module):
             tree = Tree(prms)
             self.trees.append(tree)
 
-    def forward(self, xb,yb=None,layer=None):
+    def forward(self, xb,yb=None,layer=None, save_flag = False):
 
         self.predictions = []
         if self.training:
@@ -121,7 +121,6 @@ class Forest(nn.Module):
             yb_onehot.scatter_(1, yb, 1)
 
             self.predictions = []            
-            self.mu = []
             
 
         if self.prms.use_prenet:
@@ -157,6 +156,10 @@ class Forest(nn.Module):
             ####################################################################
             pred = (mu_leaves @ y_hat_leaves.t())
 
+            if save_flag:
+                self.mu_list.append(mu)
+                self.y_hat_val_avg = y_hat_val_avg
+
             self.predictions.append(pred.unsqueeze(1))
             
 
@@ -171,6 +174,66 @@ class Forest(nn.Module):
         self.prediction = torch.sum(self.prediction, dim=1)/self.prms.n_trees
         return self.prediction
 
+    def forward_wavelets(self, xb,cutoff_nodes,yb=None,  layer=None, save_flag = False):
+
+        #convert yb from tensor to one_hot
+        yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
+        yb = yb.view(-1,1)
+        if yb.is_cuda:
+            yb_onehot = yb_onehot.cuda()
+        yb_onehot.scatter_(1, yb, 1)
+
+        self.predictions = []            
+        
+
+        if self.prms.use_prenet:
+            xb = self.prenet(xb)
+
+        if (self.prms.use_tree == False):
+            return xb
+
+        for tree in self.trees: 
+            
+            #construct routing probability tree:
+            mu = tree(xb)
+
+            nu = torch.zeros(mu.size())
+
+            #find the nodes that are leaves:
+            leaves = torch.zeros(mu.size(1))
+            for j in cutoff_nodes:
+                nu[:,j] = mu[:,j]
+                if 2*j>=nu.size(1):
+                    leaves[j] = 1
+                else:
+                    if not (cutoff_nodes==2*j).sum() and not (cutoff_nodes==(2*j+1)).sum():
+                        leaves[j] = 1
+
+            # print(f"leaves: {leaves}")
+
+            #normalize leaf probabilities:
+            nu_leaves = nu*leaves
+            nu_normalize_factor = nu_leaves.sum(1)
+            nu_normalized = (nu_leaves.t()/nu_normalize_factor).cuda()
+            
+            # N = mu.sum(0)
+            
+            eps = 10^-20
+
+            self.y_hat = nu_normalized.cuda() @ yb_onehot
+            self.y_hat = self.y_hat.t()/(self.y_hat.sum(1)+eps)
+
+            pred = (self.y_hat @ nu_normalized.cuda()).t()
+
+            if save_flag:
+                self.mu_list.append(mu)
+                self.y_hat_val_avg = y_hat_val_avg
+
+            self.predictions.append(pred.unsqueeze(2))
+
+        self.prediction = torch.cat(self.predictions, dim=2)
+        self.prediction = torch.sum(self.prediction, dim=2)/self.prms.n_trees
+        return self.prediction
 class Tree(nn.Module):
     def __init__(self,prms):
         super(Tree, self).__init__()
@@ -221,7 +284,8 @@ class Tree(nn.Module):
             mu = mu.view(x.size(0), -1, 1)
             big_mu = torch.cat((big_mu,mu),1)
 
-        big_mu = big_mu.view(x.size(0), -1)      
+        big_mu = big_mu.view(x.size(0), -1)    
+        # self.mu_cache.append(big_mu)  
         return big_mu #-> [batch size,n_leaf]
 
 def level2nodes(tree_level):
