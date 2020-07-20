@@ -9,7 +9,8 @@ import pandas as pd
 prms = parameters()
 
 #dataloaders
-trainset, testset, trainloader, testloader = get_dataloaders(prms)
+trainloader, testloader = get_dataloaders()
+print("hi")
 
 def df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list):
     df = pd.DataFrame({'loss_list':loss_list,'val_acc_list':val_acc_list,'train_acc_list':train_acc_list})
