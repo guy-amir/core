@@ -183,6 +183,6 @@ class Trainer():
             self.cutoff_list = [int(i*prms.n_leaf/5) for i in range(1,6)]
             self.smooth_list.append(smooth_layers)
 
-            return self.loss_list,self.val_acc_list,self.train_acc_list,self.wav_acc_list,self.cutoff_list,self.smooth_list
+        return self.loss_list,self.val_acc_list,self.train_acc_list,self.wav_acc_list,self.cutoff_list,self.smooth_list
             
             #this is where we append everything
