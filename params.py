@@ -17,7 +17,7 @@ class parameters():
 
         #Forest parameters:
         self.use_tree = True
-        self.use_prenet = True
+        self.use_prenet = False
         self.classification = True
 
         self.n_trees = 1
