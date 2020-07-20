@@ -11,6 +11,16 @@ prms = parameters()
 #dataloaders
 trainset, testset, trainloader, testloader = get_dataloaders(prms)
 
+def df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list):
+    df = pd.DataFrame({'loss_list':loss_list,'val_acc_list':val_acc_list,'train_acc_list':train_acc_list})
+    if prms.wavelets and prms.use_tree:
+        for ii in range(len(wav_acc_list[0])):
+            df[f'{cutoff_list[ii]} wavelets'] = [wav_acc_list[jj][ii] for jj in range(len(wav_acc_list))]
+    for kk in range(len(smooth_list[0])):
+        df[f'layer chunk {kk}'] = [smooth_list[jj][kk] for jj in range(len(smooth_list))]
+
+    return df
+
 def evaluate_network(prms):
     #dataloaders
     # trainset, testset, trainloader, testloader = get_dataloaders(prms)
@@ -24,15 +34,30 @@ def evaluate_network(prms):
     #run\fit\whatever
     trainer = Trainer(prms,net)
     loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list = trainer.fit(trainloader,testloader)
+    df = df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list)
+    return df
 
 #load default parameters (including device)
 # prms = parameters()
 
-prms.use_tree = True
-evaluate_network(prms)
-prms.use_tree = False
-evaluate_network(prms)
+# lrs = [0.01]
+# depths = [5,12]
+# for lr in lrs:
+#     prms.learning_rate = lr
+#     prms.use_tree = True
+#     for d in depths:
+#         prms.depth = d
+#         df = evaluate_network(prms)
+#         df.to_csv(f'tree{prms.use_tree}lr{prms.learning_rate}depth{prms.depth}.csv')
 
+#     prms.use_tree = False
+#     df = evaluate_network(prms)
+#     df.to_csv(f'tree{prms.use_tree}lr{prms.learning_rate}.csv')
+
+prms.use_tree = True
+prms.wavelets = False
+df = evaluate_network(prms)
+df.to_csv(f'epochs{prms.epochs}tree{prms.use_tree}lr{prms.learning_rate}depth{prms.tree_depth}.csv')
 
 
 

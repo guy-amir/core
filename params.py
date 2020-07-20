@@ -23,7 +23,7 @@ class parameters():
         self.n_trees = 1
 
         #Tree parameters:
-        self.tree_depth = 5
+        self.tree_depth = 8
         self.n_leaf = 2**self.tree_depth
         self.feature_length = 256
         self.cascading = False
@@ -34,10 +34,9 @@ class parameters():
         # self.softmax_normalization = True ##! replace softmax_normalization in tree_conf
 
         #Training parameters:
-        self.epochs = 2
+        self.epochs = 50
         # self.batch_size = 64
-        self.one_batch = True
-        self.learning_rate = 0.05
+        self.learning_rate = 0.01
         self.weight_decay=1e-5
         self.momentum=0.9
 
