@@ -1,30 +1,37 @@
-import torchvision
 import torch
-import torchvision.transforms as transforms
+from torch.utils.data import DataLoader, Dataset
 
-def get_dataloaders(prms):
-    if prms.dataset == 'cifar10':
-        return cifar_dl(prms)
+def circle_gen(n_samples=1000,dim=1,radius=0.5):
+    samples = dim*torch.rand(n_samples,2)-(dim/2)
+    labels = ((samples**2).sum(1) <= radius**2)
+    return samples,labels
 
-
-def cifar_dl(prms):
-
-    DATA_PATH = prms.data_path
-    train_bs = prms.train_bs
-    test_bs = prms.test_bs
-
-    transform = transforms.Compose(
-        [transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-    trainset = torchvision.datasets.CIFAR10(root=DATA_PATH, train=True,
-                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=train_bs,
-                                            shuffle=True, num_workers=4)
-
-    testset = torchvision.datasets.CIFAR10(root=DATA_PATH, train=False,
-                                        download=True, transform=transform)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=test_bs,
-                                            shuffle=False, num_workers=4)
+class circlePointsDataset(Dataset):
     
-    return trainset, testset, trainloader, testloader
+  def __init__(self, samples, labels):
+        'Initialization'
+        self.labels = labels
+        self.samples = samples
+
+  def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.samples)
+
+  def __getitem__(self, index):
+        'Generates one sample of data'
+
+        # Load data and get label
+        X = self.samples[index]
+        y = self.labels[index]
+
+        return X, y
+
+Train_samples,labels = circle_gen(n_samples=100,dim=1,radius=0.5)
+Valid_data,vlabels = circle_gen(n_samples=100,dim=1,radius=0.5)
+
+
+
+train_dataset = circlePointsDataset(Train_samples,labels)
+valid_dataset = circlePointsDataset(Valid_data,vlabels)
+
+print(train_dataset)
