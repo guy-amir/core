@@ -113,11 +113,11 @@ class Forest(nn.Module):
         self.predictions = []
         if self.training:
             #convert yb from tensor to one_hot
-            yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
-            yb = yb.view(-1,1)
-            if yb.is_cuda:
-                yb_onehot = yb_onehot.cuda()
-            yb_onehot.scatter_(1, yb, 1)
+            # yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
+            # yb = yb.view(-1,1)
+            # if yb.is_cuda:
+            #     yb_onehot = yb_onehot.cuda()
+            # yb_onehot.scatter_(1, yb, 1)
 
             self.predictions = []            
             
@@ -249,31 +249,41 @@ class Tree(nn.Module):
         self.n_leaf = 2 ** prms.tree_depth
         self.n_nodes = self.n_leaf#-1
         self.n_features = prms.features4tree
+        
         self.mu_cache = []
         self.prms = prms
 
         self.decision = nn.Sigmoid()
 
-        #################################################################################################################
-        onehot = np.eye(prms.feature_length)
-        # randomly use some neurons in the feature layer to compute decision function
-        self.using_idx = np.random.choice(prms.feature_length, self.n_leaf, replace=True)
-        self.feature_mask = onehot[self.using_idx].T
-        self.feature_mask = nn.parameter.Parameter(torch.from_numpy(self.feature_mask).type(torch.FloatTensor), requires_grad=False)
-        #################################################################################################################
+        if prms.feature_map == True:
+            #################################################################################################################
+            self.n_features = prms.features4tree
+            onehot = np.eye(prms.feature_length)
+            # randomly use some neurons in the feature layer to compute decision function
+            self.using_idx = np.random.choice(prms.feature_length, self.n_leaf, replace=True)
+            self.feature_mask = onehot[self.using_idx].T
+            self.feature_mask = nn.parameter.Parameter(torch.from_numpy(self.feature_mask).type(torch.FloatTensor), requires_grad=False)
+            #################################################################################################################
+
+        if prms.logistic_regression_per_node == True:
+            self.fc = nn.ModuleList([nn.Linear(self.n_features, 1).float() for i in range(self.n_nodes)])
 
 
     def forward(self, x, save_flag = False):
-        if x.is_cuda and not self.feature_mask.is_cuda:
-            self.feature_mask = self.feature_mask.cuda()
-        feats = torch.mm(x.view(-1,self.feature_mask.size(0)), self.feature_mask)
-        decision = self.decision(feats) # passed sigmoid->[batch_size,n_leaf]
+        if self.prms.feature_map == True:
+            if x.is_cuda and not self.feature_mask.is_cuda:
+                self.feature_mask = self.feature_mask.cuda()
+            feats = torch.mm(x.view(-1,self.feature_mask.size(0)), self.feature_mask)
+        else:
+            feats = x
 
-        decision = self.decision(feats) # passed sigmoid->[batch_size,n_leaf]
+        self.d = [self.decision(node(x)) for node in self.fc]
+        
+        self.d = torch.stack(self.d)
 
-        decision = torch.unsqueeze(decision,dim=2) # ->[batch_size,n_leaf,1]
-        decision_comp = 1-decision
-        decision = torch.cat((decision,decision_comp),dim=2) # -> [batch_size,n_leaf,2]
+        decision = torch.cat((self.d,1-self.d),dim=2).permute(1,0,2)
+        
+        batch_size = x.size()[0]
 
         mu = x.data.new(x.size(0),1,1).fill_(1.)
         big_mu = x.data.new(x.size(0),2,1).fill_(1.)

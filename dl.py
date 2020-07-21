@@ -39,7 +39,7 @@ class circlePointsDataset(Dataset):
     
     def circle_gen(self,n_samples=1000,dim=1,radius=0.5):
         samples = dim*torch.rand(n_samples,2)-(dim/2)
-        labels = ((samples**2).sum(1) <= radius**2)
+        labels = ((samples**2).sum(1) <= radius**2).int()
         return samples,labels
 
 # Train_samples,labels = circle_gen(n_samples=100,dim=1,radius=0.5)

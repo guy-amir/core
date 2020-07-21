@@ -25,13 +25,18 @@ class parameters():
         #Tree parameters:
         self.tree_depth = 8
         self.n_leaf = 2**self.tree_depth
-        self.feature_length = 256
+        
         self.cascading = False
         self.single_level_training = True
-        self.features4tree = 1
+        
+        self.feature_map = False
+        self.feature_length = 256
+        self.features4tree = 2
         # self.level = 0
-        # self.single_sigmoid = False
+
         # self.softmax_normalization = True ##! replace softmax_normalization in tree_conf
+
+        self.logistic_regression_per_node = True
 
         #Training parameters:
         self.epochs = 50
