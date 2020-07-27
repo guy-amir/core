@@ -2,95 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import numpy as np
-# class cifar_net(nn.Module):
-#     def __init__(self):
-#         super(cifar_net, self).__init__()
-#         self.conv_layer1 = nn.Sequential(
-
-#             # Conv Layer block 1
-#             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-#             nn.BatchNorm2d(32),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
-#             nn.ReLU(inplace=True),
-#             nn.MaxPool2d(kernel_size=2, stride=2),
-#         )
-        
-#         self.conv_layer2 = nn.Sequential(
-#             # Conv Layer block 2
-#             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
-#             nn.BatchNorm2d(128),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
-#             nn.BatchNorm2d(128),
-#             nn.ReLU(inplace=True),
-#             nn.MaxPool2d(kernel_size=2, stride=2),
-#             nn.Dropout2d(p=0.05),
-#         )
-        
-#         self.conv_layer3 = nn.Sequential(
-#             # Conv Layer block 3
-#             nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
-#             nn.BatchNorm2d(256),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1),
-#             nn.BatchNorm2d(256),
-#             nn.ReLU(inplace=True),
-#             nn.MaxPool2d(kernel_size=2, stride=2),
-#         )
-
-#         self.fc_layer1 = nn.Sequential(
-#             nn.Dropout(p=0.1),
-#             nn.Linear(4096, 1024),
-#             nn.BatchNorm1d(1024),
-#             nn.ReLU(inplace=True),
-#         )
-        
-#         # self.fc_layer2 = nn.Sequential(
-#         #     nn.Linear(1024, 512),
-            
-#         #     nn.ReLU(inplace=True),
-#         #     nn.Dropout(p=0.1),
-#         #     nn.Linear(512, 10)
-#         # )
-
-#         self.fc_layer2 = nn.Sequential(
-#             nn.Linear(1024, 512),
-#             nn.BatchNorm1d(512),
-#             nn.ReLU(inplace=True),
-#             nn.Dropout(p=0.1),
-#             nn.Linear(512, 256)
-#         )
-
-#         # self.for_tree = nn.Sequential(
-#         #     nn.Linear(1024, 512),
-#         #     nn.ReLU(inplace=True),
-#         #     nn.Dropout(p=0.1),
-#         #     nn.Linear(512, 10)
-#         # )
-
-#         # self.softmax = nn.Sequential(
-#         #     nn.Softmax() #dim=1) #maybe add dim if necessarry
-#         # )
-
-#     def forward(self, x):
-
-#         cl1 = self.conv_layer1(x)
-#         cl2 = self.conv_layer2(cl1)
-#         cl3 = self.conv_layer3(cl2)
-
-#         # flatten
-#         cl3 = cl3.view(cl3.size(0), -1)
-        
-#         # fc layer
-#         fc1 = self.fc_layer1(cl3)
-#         fc2 = self.fc_layer2(fc1)
-
-#         #softmax
-#         # sm = self.softmax(fc2)
-
-#         return x,cl1,cl2,cl3,fc1,fc2 #option a - smoothness testing
-#         # return fc2 #option b - no smoothness testing
 
 class Forest(nn.Module):
     def __init__(self, prms):
@@ -110,16 +21,18 @@ class Forest(nn.Module):
 
     def forward(self, xb,yb=None,layer=None, save_flag = False):
 
+        self.save_flag = save_flag
         self.predictions = []
         if self.training:
             #convert yb from tensor to one_hot
-            # yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
+            yb_onehot = self.vec2onehot(yb)
+            # torch.zeros(yb.size(0), int(yb.max()+1))
             # yb = yb.view(-1,1)
             # if yb.is_cuda:
             #     yb_onehot = yb_onehot.cuda()
             # yb_onehot.scatter_(1, yb, 1)
 
-            self.predictions = []            
+ 
             
 
         if self.prms.use_prenet:
@@ -131,14 +44,30 @@ class Forest(nn.Module):
 
         for tree in self.trees: 
             
-            #construct routing probability tree:
             mu = tree(xb)
+
+            if self.training:
+                self.predict(mu,yb_onehot)
+            else:
+                self.predict(mu)
+            
+            return self.prediction
+
+    def vec2onehot(self,yb):
+        yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
+        yb = yb.view(-1,1)
+        if yb.is_cuda:
+            yb_onehot = yb_onehot.cuda()
+        yb_onehot.scatter_(1, yb, 1)
+        return yb_onehot
+
+    def predict(self,mu,yb_onehot=None):
 
             #find the nodes that are leaves:
             mu_midpoint = int(mu.size(1)/2)
 
             mu_leaves = mu[:,mu_midpoint:]
-            # NL = mu_leaves.sum(1)
+
             #create a normalizing factor for leaves:
             N = mu.sum(0)
             
@@ -156,23 +85,15 @@ class Forest(nn.Module):
             ####################################################################
             pred = (mu_leaves @ y_hat_leaves.t())
 
-            if save_flag:
+            if self.save_flag:
                 self.mu_list.append(mu)
                 self.y_hat_val_avg = y_hat_val_avg
 
             self.predictions.append(pred.unsqueeze(1))
-            
 
-        ####################################################
-        # if self.training:
-        #     self.y_hat_batch_avg = torch.cat(self.y_hat_batch_avg, dim=2)
-        #     self.y_hat_batch_avg = torch.sum(self.y_hat_batch_avg, dim=2)/self.prms.n_trees
-        #     self.y_hat_avg.append(self.y_hat_batch_avg.unsqueeze(2))
-        #######################################################
-
-        self.prediction = torch.cat(self.predictions, dim=1)
-        self.prediction = torch.sum(self.prediction, dim=1)/self.prms.n_trees
-        return self.prediction
+            self.prediction = torch.cat(self.predictions, dim=1)
+            self.prediction = torch.sum(self.prediction, dim=1)/self.prms.n_trees
+            return self.prediction
 
     def forward_wavelets(self, xb,cutoff_nodes,yb=None,  layer=None, save_flag = False):
 

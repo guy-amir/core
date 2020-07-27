@@ -20,10 +20,10 @@ class parameters():
         self.use_prenet = False
         self.classification = True
 
-        self.n_trees = 1
+        self.n_trees = 2
 
         #Tree parameters:
-        self.tree_depth = 8
+        self.tree_depth = 6
         self.n_leaf = 2**self.tree_depth
         
         self.cascading = False
@@ -39,7 +39,7 @@ class parameters():
         self.logistic_regression_per_node = True
 
         #Training parameters:
-        self.epochs = 50
+        self.epochs = 2
         # self.batch_size = 64
         self.learning_rate = 0.01
         self.weight_decay=1e-5
@@ -50,4 +50,4 @@ class parameters():
         self.intervals = 200
 
         #smoothness parameters:
-        self.check_smoothness = True
+        self.check_smoothness = False

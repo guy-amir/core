@@ -12,15 +12,15 @@ prms = parameters()
 trainloader, testloader = get_dataloaders()
 print("hi")
 
-def df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list):
-    df = pd.DataFrame({'loss_list':loss_list,'val_acc_list':val_acc_list,'train_acc_list':train_acc_list})
-    if prms.wavelets and prms.use_tree:
-        for ii in range(len(wav_acc_list[0])):
-            df[f'{cutoff_list[ii]} wavelets'] = [wav_acc_list[jj][ii] for jj in range(len(wav_acc_list))]
-    for kk in range(len(smooth_list[0])):
-        df[f'layer chunk {kk}'] = [smooth_list[jj][kk] for jj in range(len(smooth_list))]
+# def df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list):
+#     df = pd.DataFrame({'loss_list':loss_list,'val_acc_list':val_acc_list,'train_acc_list':train_acc_list})
+#     if prms.wavelets and prms.use_tree:
+#         for ii in range(len(wav_acc_list[0])):
+#             df[f'{cutoff_list[ii]} wavelets'] = [wav_acc_list[jj][ii] for jj in range(len(wav_acc_list))]
+#     for kk in range(len(smooth_list[0])):
+#         df[f'layer chunk {kk}'] = [smooth_list[jj][kk] for jj in range(len(smooth_list))]
 
-    return df
+#     return df
 
 def evaluate_network(prms):
     #dataloaders
@@ -35,8 +35,8 @@ def evaluate_network(prms):
     #run\fit\whatever
     trainer = Trainer(prms,net)
     loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list = trainer.fit(trainloader,testloader)
-    df = df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list)
-    return df
+    # df = df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list)
+    # return df
 
 #load default parameters (including device)
 # prms = parameters()
