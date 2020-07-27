@@ -3,8 +3,11 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 class cifar_net(nn.Module):
-    def __init__(self):
+    def __init__(self,prms=None):
         super(cifar_net, self).__init__()
+
+        self.prms = prms
+
         self.conv_layer1 = nn.Sequential(
 
             # Conv Layer block 1
@@ -89,8 +92,10 @@ class cifar_net(nn.Module):
         #softmax
         # sm = self.softmax(fc2)
 
-        return x,cl1,cl2,cl3,fc1,fc2 #option a - smoothness testing
-        # return fc2 #option b - no smoothness testing
+        if self.prms.check_smoothness:
+            return x,cl1,cl2,cl3,fc1,fc2 #option a - smoothness testing
+        else:
+            return fc2 #option b - no smoothness testing
 
 class Forest(nn.Module):
     def __init__(self, prms):
@@ -101,7 +106,7 @@ class Forest(nn.Module):
         self.mu_list = []
 
         #The neural network that feeds into the trees:
-        self.prenet = cifar_net()
+        self.prenet = cifar_net(self.prms)
 
         for _ in range(self.prms.n_trees):
             tree = Tree(prms)
@@ -109,69 +114,73 @@ class Forest(nn.Module):
 
     def forward(self, xb,yb=None,layer=None, save_flag = False):
 
+        self.save_flag = save_flag
         self.predictions = []
+
+        # if prms.use_pi == True:
         if self.training:
             #convert yb from tensor to one_hot
-            yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
-            yb = yb.view(-1,1)
-            if yb.is_cuda:
-                yb_onehot = yb_onehot.cuda()
-            yb_onehot.scatter_(1, yb, 1)
-
-            self.predictions = []            
-            
-
+            yb_onehot = self.vec2onehot(yb)
         if self.prms.use_prenet:
-            self.pred_list = self.prenet(xb)
-            xb = self.pred_list[-1]
+            xb = self.prenet(xb)
+    
 
         if (self.prms.use_tree == False):
             return xb
 
         for tree in self.trees: 
             
-            #construct routing probability tree:
             mu = tree(xb)
 
-            #find the nodes that are leaves:
-            mu_midpoint = int(mu.size(1)/2)
-
-            mu_leaves = mu[:,mu_midpoint:]
-            # NL = mu_leaves.sum(1)
-            #create a normalizing factor for leaves:
-            N = mu.sum(0)
-            
-
             if self.training:
-                if self.prms.classification:
-                    self.y_hat = yb_onehot.t() @ mu/N
-                    y_hat_leaves = self.y_hat[:,mu_midpoint:]
-                    self.y_hat_batch_avg.append(self.y_hat.unsqueeze(2))
-            ####################################################################
-            else: 
-                y_hat_val_avg = torch.cat(self.y_hat_avg, dim=2)
-                y_hat_val_avg = torch.sum(y_hat_val_avg, dim=2)/y_hat_val_avg.size(2)
-                y_hat_leaves = y_hat_val_avg[:,mu_midpoint:]
-            ####################################################################
-            pred = (mu_leaves @ y_hat_leaves.t())
-
-            if save_flag:
-                self.mu_list.append(mu)
-                self.y_hat_val_avg = y_hat_val_avg
-
-            self.predictions.append(pred.unsqueeze(1))
+                self.predict(mu,yb_onehot)
+            else:
+                self.predict(mu)
             
-
-        ####################################################
-        # if self.training:
-        #     self.y_hat_batch_avg = torch.cat(self.y_hat_batch_avg, dim=2)
-        #     self.y_hat_batch_avg = torch.sum(self.y_hat_batch_avg, dim=2)/self.prms.n_trees
-        #     self.y_hat_avg.append(self.y_hat_batch_avg.unsqueeze(2))
-        #######################################################
-
+        ##GG add averaging of trees 
         self.prediction = torch.cat(self.predictions, dim=1)
         self.prediction = torch.sum(self.prediction, dim=1)/self.prms.n_trees
+
         return self.prediction
+
+    def predict(self,mu,yb_onehot=None):
+
+        #find the nodes that are leaves:
+        mu_midpoint = int(mu.size(1)/2)
+
+        mu_leaves = mu[:,mu_midpoint:]
+
+        #create a normalizing factor for leaves:
+        N = mu.sum(0)
+        
+
+        if self.training:
+            if self.prms.classification:
+
+                self.y_hat = yb_onehot.t() @ mu/N
+                y_hat_leaves = self.y_hat[:,mu_midpoint:]
+                self.y_hat_batch_avg.append(self.y_hat.unsqueeze(2))
+        ####################################################################
+        else: 
+            y_hat_val_avg = torch.cat(self.y_hat_avg, dim=2)
+            y_hat_val_avg = torch.sum(y_hat_val_avg, dim=2)/y_hat_val_avg.size(2)
+            y_hat_leaves = y_hat_val_avg[:,mu_midpoint:]
+        ####################################################################
+        pred = (mu_leaves @ y_hat_leaves.t())
+
+        if self.save_flag:
+            self.mu_list.append(mu)
+            self.y_hat_val_avg = y_hat_val_avg
+
+        self.predictions.append(pred.unsqueeze(1))
+    
+    def vec2onehot(self,yb):
+        yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
+        yb = yb.view(-1,1)
+        if yb.is_cuda:
+            yb_onehot = yb_onehot.cuda()
+        yb_onehot.scatter_(1, yb, 1)
+        return yb_onehot
 
     def forward_wavelets(self, xb,cutoff_nodes,yb=None,  layer=None, save_flag = False):
 
@@ -186,8 +195,7 @@ class Forest(nn.Module):
         
 
         if self.prms.use_prenet:
-            self.pred_list = self.prenet(xb)
-            xb = self.pred_list[-1]
+            xb = self.prenet(xb)
 
         if (self.prms.use_tree == False):
             return xb
@@ -245,35 +253,39 @@ class Tree(nn.Module):
     def __init__(self,prms):
         super(Tree, self).__init__()
         self.depth = prms.tree_depth
-        self.n_leaf = 2 ** prms.tree_depth
-        self.n_nodes = self.n_leaf#-1
-        self.n_features = prms.features4tree
+        self.n_nodes = prms.n_leaf
         self.mu_cache = []
         self.prms = prms
 
         self.decision = nn.Sigmoid()
 
-        #################################################################################################################
-        onehot = np.eye(prms.feature_length)
-        # randomly use some neurons in the feature layer to compute decision function
-        self.using_idx = np.random.choice(prms.feature_length, self.n_leaf, replace=True)
-        self.feature_mask = onehot[self.using_idx].T
-        self.feature_mask = nn.parameter.Parameter(torch.from_numpy(self.feature_mask).type(torch.FloatTensor), requires_grad=False)
-        #################################################################################################################
+        if prms.feature_map == True:
+            self.n_features = prms.feature_length
+            onehot = np.eye(prms.feature_length)
+            # randomly use some neurons in the feature layer to compute decision function
+            self.using_idx = np.random.choice(prms.feature_length, prms.n_leaf, replace=True)
+            self.feature_mask = onehot[self.using_idx].T
+            self.feature_mask = nn.parameter.Parameter(torch.from_numpy(self.feature_mask).type(torch.FloatTensor), requires_grad=False)
+
+        if prms.logistic_regression_per_node == True:
+            self.fc = nn.ModuleList([nn.Linear(prms.n_leaf, 1).float() for i in range(self.n_nodes)])
 
 
     def forward(self, x, save_flag = False):
-        if x.is_cuda and not self.feature_mask.is_cuda:
-            self.feature_mask = self.feature_mask.cuda()
-        feats = torch.mm(x.view(-1,self.feature_mask.size(0)), self.feature_mask)
-        decision = self.decision(feats) # passed sigmoid->[batch_size,n_leaf]
+        if self.prms.feature_map == True:
+            if x.is_cuda and not self.feature_mask.is_cuda:
+                self.feature_mask = self.feature_mask.cuda()
+            feats = torch.mm(x.view(-1,self.feature_mask.size(0)), self.feature_mask)
+        else:
+            feats = x
 
-        decision = self.decision(feats) # passed sigmoid->[batch_size,n_leaf]
+        self.d = [self.decision(node(feats)) for node in self.fc]
+        
+        self.d = torch.stack(self.d)
 
-        decision = torch.unsqueeze(decision,dim=2) # ->[batch_size,n_leaf,1]
-        decision_comp = 1-decision
-        decision = torch.cat((decision,decision_comp),dim=2) # -> [batch_size,n_leaf,2]
-
+        decision = torch.cat((self.d,1-self.d),dim=2).permute(1,0,2)
+        
+        batch_size = x.size()[0]
         mu = x.data.new(x.size(0),1,1).fill_(1.)
         big_mu = x.data.new(x.size(0),2,1).fill_(1.)
         begin_idx = 1

@@ -23,26 +23,25 @@ class parameters():
         self.n_trees = 1
 
         #Tree parameters:
-        self.tree_depth = 8
+        self.tree_depth = 4
         self.n_leaf = 2**self.tree_depth
         self.feature_length = 256
         self.cascading = False
         self.single_level_training = True
         self.features4tree = 1
-        # self.level = 0
-        # self.single_sigmoid = False
-        # self.softmax_normalization = True ##! replace softmax_normalization in tree_conf
+        self.logistic_regression_per_node = True
+        self.feature_map = True
 
         #Training parameters:
-        self.epochs = 50
+        self.epochs = 10
         # self.batch_size = 64
-        self.learning_rate = 0.01
+        self.learning_rate = 0.001
         self.weight_decay=1e-5
         self.momentum=0.9
 
         #Wavelet parameters:
-        self.wavelets = True
+        self.wavelets = False
         self.intervals = 200
 
         #smoothness parameters:
-        self.check_smoothness = True
+        self.check_smoothness = False
