@@ -23,7 +23,7 @@ class parameters():
         self.n_trees = 2
 
         #Tree parameters:
-        self.tree_depth = 6
+        self.tree_depth = 2
         self.n_leaf = 2**self.tree_depth
         
         self.cascading = False
@@ -39,9 +39,9 @@ class parameters():
         self.logistic_regression_per_node = True
 
         #Training parameters:
-        self.epochs = 2
+        self.epochs = 10
         # self.batch_size = 64
-        self.learning_rate = 0.01
+        self.learning_rate = 1
         self.weight_decay=1e-5
         self.momentum=0.9
 

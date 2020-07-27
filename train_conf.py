@@ -7,6 +7,7 @@ class Trainer():
     def __init__(self,prms,net):
         self.prms = prms
         self.net = net
+        net.apply(init_weights)
         if prms.use_tree == True:
             self.criterion = nn.NLLLoss()
         else:
@@ -187,3 +188,8 @@ class Trainer():
         return self.loss_list,self.val_acc_list,self.train_acc_list,self.wav_acc_list,self.cutoff_list,self.smooth_list
             
             #this is where we append everything
+
+def init_weights(m):
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)

@@ -35,6 +35,7 @@ def evaluate_network(prms):
     #run\fit\whatever
     trainer = Trainer(prms,net)
     loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list = trainer.fit(trainloader,testloader)
+    print("hi")
     # df = df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list)
     # return df
 
