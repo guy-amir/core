@@ -28,24 +28,37 @@ class Forest(nn.Module):
         self.predictions = []
 
         if self.training:
-            #convert yb from tensor to one_hot
             yb_onehot = self.vec2onehot(yb)
+
         if self.prms.use_prenet:
             xb = self.prenet(xb)
-    
+        
 
         if (self.prms.use_tree == False):
             return xb
 
-        for tree in self.trees: 
-            
-            mu = tree(xb)
 
-            if self.training:
-                self.predict(mu,yb_onehot)
+        for tree in self.trees: 
+              
+            FLT_MIN = float(np.finfo(np.float32).eps)
+
+            mu = tree(xb)
+            mu += FLT_MIN
+
+            mu_midpoint = int(mu.size(1)/2)
+            mu_leaves = mu[:,mu_midpoint:]
+
+            if self.prms.use_pi:
+                if self.training:
+                    self.update_label_distribution_in_tree(tree, mu_leaves, yb_onehot)
+                pred = torch.mm(mu_leaves,tree.pi)
+                self.predictions.append(pred.unsqueeze(1))
             else:
-                self.predict(mu)
-            
+                if self.training:
+                    self.predict(mu,yb_onehot)
+                else:
+                    self.predict(mu)
+                    
         ##GG add averaging of trees 
         self.prediction = torch.cat(self.predictions, dim=1)
         self.prediction = torch.sum(self.prediction, dim=1)/self.prms.n_trees
@@ -90,6 +103,26 @@ class Forest(nn.Module):
             yb_onehot = yb_onehot.cuda()
         yb_onehot.scatter_(1, yb, 1)
         return yb_onehot
+
+    def update_label_distribution_in_tree(self,tree, mu, yb_onehot):
+            """
+            compute new mean vector based on a simple update rule inspired from traditional regression tree 
+            Args:
+                param feat_batch (Tensor): feature batch of size [batch_size, feature_length]
+                param target_batch (Tensor): target batch of size [batch_size, vector_length]
+            """
+            with torch.no_grad():
+                FLT_MIN = float(np.finfo(np.float32).eps)    
+                prob = torch.mm(mu, tree.pi)+FLT_MIN  # [batch_size,n_class]
+                _target = yb_onehot.unsqueeze(1) # [batch_size,1,n_class]
+                _pi = tree.pi.unsqueeze(0) # [1,n_leaf,n_class]
+                _mu = mu.unsqueeze(2) # [batch_size,n_leaf,1]
+                _prob = torch.clamp(prob.unsqueeze(1),min=1e-6,max=1.) # [batch_size,1,n_class]
+    
+                _new_pi = torch.mul(torch.mul(_target,_pi),_mu)/_prob # [batch_size,n_leaf,n_class]
+                tree.pi_counter += torch.sum(_new_pi,dim=0).cuda()
+            # new_pi = F.softmax(new_pi, dim=1).data #GG??
+            # self.pi = Parameter(new_pi, requires_grad = False)
 
     def forward_wavelets(self, xb,cutoff_nodes,yb=None,  layer=None, save_flag = False):
 
@@ -158,6 +191,7 @@ class Forest(nn.Module):
         else:
             return self.prediction
 
+
 class Tree(nn.Module):
     def __init__(self,prms):
         super(Tree, self).__init__()
@@ -168,8 +202,12 @@ class Tree(nn.Module):
 
         self.decision = nn.Sigmoid()
 
-        if prms.use_pi == True: 
-            self.pi = np.ones((self.prms.n_leaf, self.prms.n_features))/self.prms.n_features
+        if prms.use_pi: 
+            self.pi = torch.ones((self.prms.n_leaf, self.prms.n_classes))/self.prms.n_classes
+            self.pi_counter = self.pi.data.new(self.prms.n_leaf, self.prms.n_classes).fill_(.0)
+            if torch.cuda.is_available():
+                self.pi = self.pi.cuda()
+                self.pi_counter = self.pi_counter.cuda()
 
         if prms.feature_map == True:
             self.n_features = prms.feature_length
@@ -218,6 +256,8 @@ class Tree(nn.Module):
         big_mu = big_mu.view(x.size(0), -1)    
         # self.mu_cache.append(big_mu)  
         return big_mu #-> [batch size,n_leaf]
+
+    
 
 def level2nodes(tree_level):
     return 2**(tree_level+1)

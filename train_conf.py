@@ -153,25 +153,34 @@ class Trainer():
                     print(f'[{epoch + 1}, {i + 1}] loss: {running_loss}')
                     running_loss = 0.0
 
+            
             _, predicted = torch.max(preds, 1)
             total += yb.size(0)
             correct += (predicted == yb).sum().item()
             train_acc = 100 * correct / total
 
-            if prms.check_smoothness == True:
+            if prms.check_smoothness:
                 preds_list = self.net.pred_list
                 smooth_layers = smoothness_layers(preds_list,yb)
 
 
-            if prms.use_tree==True:
-                wav_acc = []
-                self.net.y_hat_batch_avg = torch.cat(self.net.y_hat_batch_avg, dim=2)
-                self.net.y_hat_batch_avg = torch.sum(self.net.y_hat_batch_avg, dim=2)/self.net.y_hat_batch_avg.size(2)
-                self.net.y_hat_avg.append(self.net.y_hat_batch_avg.unsqueeze(2))
-                if prms.wavelets == True:
-                    for i in range(1,6):
-                        cutoff = int(i*prms.n_leaf/5) #arbitrary cutoff
-                        wav_acc.append(self.wavelet_validation(testloader,cutoff))
+            if prms.use_tree:
+                if prms.use_pi:
+                    for tree in self.net.trees:
+                        tree.pi_counter = nn.functional.softmax(tree.pi_counter, dim=1).data #GG??
+                        tree.pi = nn.Parameter(tree.pi_counter, requires_grad = False)
+                        tree.pi_counter = tree.pi.data.new(self.prms.n_leaf, self.prms.n_classes).fill_(.0)
+                        print(f"pi: {tree.pi.sum()}")
+
+                else:
+                    wav_acc = []
+                    self.net.y_hat_batch_avg = torch.cat(self.net.y_hat_batch_avg, dim=2)
+                    self.net.y_hat_batch_avg = torch.sum(self.net.y_hat_batch_avg, dim=2)/self.net.y_hat_batch_avg.size(2)
+                    self.net.y_hat_avg.append(self.net.y_hat_batch_avg.unsqueeze(2))
+                    if prms.wavelets == True:
+                        for i in range(1,6):
+                            cutoff = int(i*prms.n_leaf/5) #arbitrary cutoff
+                            wav_acc.append(self.wavelet_validation(testloader,cutoff))
             
 
             self.loss_list.append(long_running_loss)
@@ -183,6 +192,8 @@ class Trainer():
             self.cutoff_list = [int(i*prms.n_leaf/5) for i in range(1,6)]
             if prms.check_smoothness == True:
                 self.smooth_list.append(smooth_layers)
+
+            
 
         return self.loss_list,self.val_acc_list,self.train_acc_list,self.wav_acc_list,self.cutoff_list,self.smooth_list
             

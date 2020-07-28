@@ -20,7 +20,7 @@ class parameters():
         self.use_prenet = True
         self.classification = True
         self.use_pi = True
-        
+
         self.n_trees = 1
 
         #Tree parameters:
@@ -28,6 +28,7 @@ class parameters():
         self.n_leaf = 2**self.tree_depth
         if self.dataset == 'cifar10':
             self.feature_length = 256
+            self.n_classes = 10
         self.cascading = False
         self.single_level_training = True
         self.features4tree = 1
@@ -36,10 +37,10 @@ class parameters():
         
 
         #Training parameters:
-        self.epochs = 10
+        self.epochs = 20
         # self.batch_size = 64
         self.learning_rate = 0.001
-        self.weight_decay=1e-5
+        self.weight_decay=1e-4
         self.momentum=0.9
 
         #Wavelet parameters:

@@ -57,7 +57,7 @@ def evaluate_network(prms):
 prms.use_tree = True
 prms.wavelets = False
 df = evaluate_network(prms)
-df.to_csv(f'epochs{prms.epochs}tree{prms.use_tree}lr{prms.learning_rate}depth{prms.tree_depth}.csv')
+# df.to_csv(f'epochs{prms.epochs}tree{prms.use_tree}lr{prms.learning_rate}depth{prms.tree_depth}.csv')
 
 
 
