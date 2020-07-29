@@ -39,7 +39,7 @@ class parameters():
         #Training parameters:
         self.epochs = 20
         # self.batch_size = 64
-        self.learning_rate = 0.001
+        self.learning_rate = 0.0001
         self.weight_decay=1e-4
         self.momentum=0.9
 

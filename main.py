@@ -5,6 +5,8 @@ from model_conf import Forest
 from train_conf import Trainer
 import pandas as pd
 
+
+
 #load default parameters (including device)
 prms = parameters()
 
@@ -34,8 +36,8 @@ def evaluate_network(prms):
     #run\fit\whatever
     trainer = Trainer(prms,net)
     loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list = trainer.fit(trainloader,testloader)
-    df = df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list)
-    return df
+    # df = df_maker(loss_list,val_acc_list,train_acc_list,wav_acc_list,cutoff_list,smooth_list)
+    # return df
 
 #load default parameters (including device)
 # prms = parameters()
@@ -56,7 +58,8 @@ def evaluate_network(prms):
 
 prms.use_tree = True
 prms.wavelets = False
-df = evaluate_network(prms)
+# df = evaluate_network(prms)
+evaluate_network(prms)
 # df.to_csv(f'epochs{prms.epochs}tree{prms.use_tree}lr{prms.learning_rate}depth{prms.tree_depth}.csv')
 
 

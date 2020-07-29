@@ -2,6 +2,8 @@ import torch.optim as optim
 import torch.nn as nn
 import torch
 from smooth import smoothness_layers
+from torch.utils.tensorboard import SummaryWriter
+
 
 class Trainer():
     def __init__(self,prms,net):
@@ -117,6 +119,9 @@ class Trainer():
         self.smooth_list = []
         self.cutoff_list = []
 
+        writer = SummaryWriter()
+
+
         for epoch in range(prms.epochs):  # loop over the dataset multiple times
 
             self.net.train(True)
@@ -153,7 +158,8 @@ class Trainer():
                     print(f'[{epoch + 1}, {i + 1}] loss: {running_loss}')
                     running_loss = 0.0
 
-            
+            writer.add_scalar("Loss/train", loss, epoch)
+
             _, predicted = torch.max(preds, 1)
             total += yb.size(0)
             correct += (predicted == yb).sum().item()
@@ -193,7 +199,8 @@ class Trainer():
             if prms.check_smoothness == True:
                 self.smooth_list.append(smooth_layers)
 
-            
+        writer.flush()
+        writer.close()
 
         return self.loss_list,self.val_acc_list,self.train_acc_list,self.wav_acc_list,self.cutoff_list,self.smooth_list
             
