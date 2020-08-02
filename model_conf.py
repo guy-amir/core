@@ -79,7 +79,7 @@ class Forest(nn.Module):
         if self.training:
             if self.prms.classification:
 
-                self.y_hat = yb_onehot.t() @ mu/N
+                self.y_hat = yb_onehot.t() @ mu.float()/N
                 y_hat_leaves = self.y_hat[:,mu_midpoint:]
                 self.y_hat_batch_avg.append(self.y_hat.unsqueeze(2))
         ####################################################################
@@ -98,7 +98,7 @@ class Forest(nn.Module):
     
     def vec2onehot(self,yb):
         yb_onehot = torch.zeros(yb.size(0), int(yb.max()+1))
-        yb = yb.view(-1,1)
+        yb = yb.view(-1,1).long()
         if yb.is_cuda:
             yb_onehot = yb_onehot.cuda()
         yb_onehot.scatter_(1, yb, 1)
@@ -203,7 +203,7 @@ class Tree(nn.Module):
         self.decision = nn.Sigmoid()
 
         if prms.use_pi: 
-            self.pi = torch.ones((self.prms.n_leaf, self.prms.n_classes))/self.prms.n_classes
+            self.pi = torch.ones((self.prms.n_leaf, self.prms.n_classes)).double()/self.prms.n_classes
             self.pi_counter = self.pi.data.new(self.prms.n_leaf, self.prms.n_classes).fill_(.0)
             if torch.cuda.is_available():
                 self.pi = self.pi.cuda()
@@ -225,7 +225,7 @@ class Tree(nn.Module):
         if self.prms.feature_map == True:
             if x.is_cuda and not self.feature_mask.is_cuda:
                 self.feature_mask = self.feature_mask.cuda()
-            feats = torch.mm(x.view(-1,self.feature_mask.size(0)), self.feature_mask)
+            feats = torch.mm(x.view(-1,self.feature_mask.size(0)).float(), self.feature_mask)
         else:
             feats = x
 

@@ -11,7 +11,10 @@ class Trainer():
             self.criterion = nn.NLLLoss()
         else:
             self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.SGD(net.parameters(), lr=prms.learning_rate, momentum=prms.momentum, weight_decay=self.prms.weight_decay)
+        if prms.optimizer == 'SGD':
+            self.optimizer = optim.SGD(net.parameters(), lr=prms.learning_rate, momentum=prms.momentum, weight_decay=self.prms.weight_decay)
+        if prms.optimizer == 'Adam':
+            self.optimizer = optim.Adam(net.parameters(), lr=prms.learning_rate, weight_decay=self.prms.weight_decay)
 
     def validation(self,testloader):
         self.net.train(False)
