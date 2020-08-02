@@ -200,7 +200,10 @@ class Tree(nn.Module):
         self.mu_cache = []
         self.prms = prms
 
-        self.decision = nn.Sigmoid()
+        if prms.activation == 'relu':
+            self.decision = nn.ReLU()
+        elif prms.activation == 'sigmoid':
+            self.decision = nn.Sigmoid()
 
         if prms.use_pi: 
             self.pi = torch.ones((self.prms.n_leaf, self.prms.n_classes)).double()/self.prms.n_classes

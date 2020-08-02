@@ -40,12 +40,13 @@ class parameters():
         self.features4tree = 1
         self.logistic_regression_per_node = True
         self.feature_map = True
+        self.activation = 'sigmoid'
         
 
         #Training parameters:
         self.epochs = 100
         # self.batch_size = 64
-        self.learning_rate = 0.03
+        self.learning_rate = 0.0006
         self.weight_decay=1e-4
         self.momentum=0.9
         self.optimizer = 'Adam'
