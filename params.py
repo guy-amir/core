@@ -16,7 +16,7 @@ class parameters():
         # self.batchnorm = True
 
         #Forest parameters:
-        self.use_tree = True
+        self.use_tree = False
         self.use_prenet = True
         self.classification = True
         self.use_pi = True
