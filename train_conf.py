@@ -30,8 +30,7 @@ class Trainer():
                 correct += (predicted == labels).sum().item()
                 acc = 100 * correct / total
 
-        print('Accuracy of the network on the 10000 test images: %d %%' % (
-            acc))
+        print(f'Accuracy of the network on the validation set: {acc}')
         return acc
 
     def wavelet_validation(self,testloader,cutoff):
@@ -124,7 +123,7 @@ class Trainer():
 
             self.net.train(True)
             #add if for tree:
-            
+            # print(f'epoch {epoch}')
             self.net.y_hat_batch_avg = []
 
             total = 0
@@ -151,10 +150,10 @@ class Trainer():
                 # print statistics
                 running_loss += loss.item()
                 long_running_loss  += loss.item()
-                if i % 50 == 49:    # print every 50 mini-batches
+                # if i % 50 == 49:    # print every 50 mini-batches
 
-                    print(f'[{epoch + 1}, {i + 1}] loss: {running_loss}')
-                    running_loss = 0.0
+                print(f'[{epoch + 1}, {i + 1}] loss: {running_loss}')
+                running_loss = 0.0
 
             
             _, predicted = torch.max(preds, 1)
@@ -170,10 +169,17 @@ class Trainer():
             if prms.use_tree:
                 if prms.use_pi:
                     for tree in self.net.trees:
+                        # for j in range(20):
+                        #     for i, data in enumerate(trainloader, 0):
+                        #         xb,yb = data[0].to(prms.device),data[1].to(prms.device)
+                        #         yb = self.net.vec2onehot(yb)
+                        #         mu_midpoint = int(tree.mu_cache[i].size(1)/2)
+                        #         mu_leaves = tree.mu_cache[i][:,mu_midpoint:]
+                        #         self.net.update_label_distribution_in_tree(tree, mu_leaves, yb)
                         tree.pi_counter = nn.functional.softmax(tree.pi_counter, dim=1).data #GG??
                         tree.pi = nn.Parameter(tree.pi_counter, requires_grad = False)
                         tree.pi_counter = tree.pi.data.new(self.prms.n_leaf, self.prms.n_classes).fill_(.0)
-                        print(f"pi: {tree.pi.sum()}")
+                        print(f"pi: {tree.pi}")
 
                 else:
                     wav_acc = []

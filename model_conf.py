@@ -78,7 +78,6 @@ class Forest(nn.Module):
 
         if self.training:
             if self.prms.classification:
-
                 self.y_hat = yb_onehot.t() @ mu.float()/N
                 y_hat_leaves = self.y_hat[:,mu_midpoint:]
                 self.y_hat_batch_avg.append(self.y_hat.unsqueeze(2))
@@ -90,9 +89,9 @@ class Forest(nn.Module):
         ####################################################################
         pred = (mu_leaves @ y_hat_leaves.t())
 
-        if self.save_flag:
+        if self.prms.save_flag:
             self.mu_list.append(mu)
-            self.y_hat_val_avg = y_hat_val_avg
+            # self.y_hat_val_avg = y_hat_val_avg
 
         self.predictions.append(pred.unsqueeze(1))
     
@@ -112,6 +111,7 @@ class Forest(nn.Module):
                 param target_batch (Tensor): target batch of size [batch_size, vector_length]
             """
             with torch.no_grad():
+
                 FLT_MIN = float(np.finfo(np.float32).eps)    
                 prob = torch.mm(mu, tree.pi)+FLT_MIN  # [batch_size,n_class]
                 _target = yb_onehot.unsqueeze(1) # [batch_size,1,n_class]
@@ -222,6 +222,7 @@ class Tree(nn.Module):
 
         if prms.logistic_regression_per_node == True:
             self.fc = nn.ModuleList([nn.Linear(prms.n_leaf, 1).float() for i in range(self.n_nodes)])
+            
 
 
     def forward(self, x, save_flag = False):

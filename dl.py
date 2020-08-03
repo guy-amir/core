@@ -9,7 +9,53 @@ def get_dataloaders(prms):
         return cifar_dl(prms)
     if prms.dataset == 'diabetes':
         return diabetes_dl(prms)
+    if prms.dataset == 'red_wine':
+        return red_wine_dl(prms)
 
+#############################################################################################################3
+def red_wine_dl(prms):
+    
+    init_dataset = redWineDataset(prms)
+    wine_length = 1599
+    params = {'batch_size': wine_length,
+          'shuffle': True,
+          'num_workers': 6}
+    
+    lengths = [int(wine_length*0.8), wine_length-int(wine_length*0.8)]
+    train_dataset,valid_dataset = random_split(init_dataset, lengths)
+
+    train_loader = DataLoader(train_dataset, **params)
+    test_loader = DataLoader(valid_dataset, **params)
+
+    return train_dataset,valid_dataset,train_loader,test_loader
+
+class redWineDataset(Dataset):
+    
+    def __init__(self,prms):
+        'Initialization'
+        DATA_PATH = prms.data_path
+        wine = pd.read_csv(f'{DATA_PATH}/red_wine.csv', sep=';')
+        
+        X=wine[wine.columns[:11]]
+        Y=wine['quality']-3
+
+        self.samples = torch.tensor(X.values)
+        self.labels = torch.tensor(Y.values)
+
+    def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.samples)
+
+    def __getitem__(self, index):
+        'Generates one sample of data'
+
+        # Load data and get label
+        X = self.samples[index]
+        y = self.labels[index]
+
+        return X, y
+
+#####################################################################################################################33       
 def diabetes_dl(prms):
     
     init_dataset = diabetesDataset(prms)
@@ -52,7 +98,7 @@ class diabetesDataset(Dataset):
 
         return X, y
 
-
+########################################################################################
 def cifar_dl(prms):
     DATA_PATH = prms.data_path
     train_bs = prms.train_bs
